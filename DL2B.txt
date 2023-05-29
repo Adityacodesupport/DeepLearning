@@ -1,0 +1,67 @@
+import tensorflow as tf
+from tensorflow.keras.datasets import imdb
+from tensorflow.keras.preprocessing.text import Tokenizer
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+
+     
+
+
+# Load the IMDB dataset
+vocab_size = 10000
+(X_train, y_train), (X_test, y_test) = imdb.load_data(num_words=vocab_size)
+
+     
+
+
+# Tokenize the sequences
+tokenizer = Tokenizer(num_words=vocab_size)
+X_train = tokenizer.sequences_to_matrix(X_train, mode='binary')
+X_test = tokenizer.sequences_to_matrix(X_test, mode='binary')
+
+# Pad the sequences to the same length
+max_length = 500
+X_train = pad_sequences(X_train, maxlen=max_length, padding='pre', truncating='pre')
+X_test = pad_sequences(X_test, maxlen=max_length, padding='pre', truncating='pre')
+
+     
+
+
+# Define the neural network model
+model = tf.keras.models.Sequential([
+    tf.keras.layers.Embedding(vocab_size, 64, input_length=max_length),
+    tf.keras.layers.Conv1D(128, 5, activation='relu'),
+    tf.keras.layers.GlobalMaxPooling1D(),
+    tf.keras.layers.Dense(64, activation='relu'),
+    tf.keras.layers.Dense(1, activation='sigmoid')
+])
+
+     
+
+
+# Compile the model
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+     
+
+
+# Train the model
+history = model.fit(X_train, y_train, epochs=10, batch_size=32, validation_split=0.2)
+
+    
+
+
+# Evaluate the model on the test set
+test_loss, test_acc = model.evaluate(X_test, y_test)
+print('Test accuracy:', test_acc)
+
+     
+
+# Make predictions on new data
+new_X = ["The movie was excellent and worth watching"]
+new_X = tokenizer.texts_to_sequences(new_X)
+new_X = pad_sequences(new_X, maxlen=max_length, padding='pre', truncating='pre')
+prediction = model.predict(new_X)[0][0]
+if prediction >= 0.5:
+    print('Positive review')
+else:
+    print('Negative review')
