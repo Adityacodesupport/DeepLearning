@@ -1,0 +1,93 @@
+'''
+Author: Aditya Vivek Khatode
+Title: Deep Learning
+'''
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import accuracy_score, classification_report
+
+from keras.models import Sequential
+from keras.layers import Dense
+from keras import callbacks
+
+df = pd.read_csv('letter-recognition.data', header=None)
+
+df.columns = ['letter', 'x-box', 'y-box', 'width', 'high', 'onpix', 'x-bar', 'y-bar', 'x2bar', 'y2bar', 'xybar', 'x2ybr', 'xy2br', 'x-ege', 'xegvy', 'y-ege', 'yegvx']
+df.head()
+
+df_without_letter_column = df.loc[:, df.columns != 'letter']
+letter_column = df['letter']
+x = df_without_letter_column.values 
+min_max_scaler = MinMaxScaler()
+x_scaled = min_max_scaler.fit_transform(x)
+df = pd.DataFrame(x_scaled)
+df.insert(0, 'letter', letter_column)
+
+df.columns = ['letter', 'x-box', 'y-box', 'width', 'high', 'onpix', 'x-bar', 'y-bar', 'x2bar', 'y2bar', 'xybar', 'x2ybr', 'xy2br', 'x-ege', 'xegvy', 'y-ege', 'yegvx']
+df
+
+X = df.drop('letter', axis=1)
+y = df['letter']
+
+X_train = X.loc[:15999]
+y_train = y.loc[:15999]
+X_test = X.loc[16000:]
+y_test = y.loc[16000:]
+
+def evaluate(model):
+    model.fit(X_train, y_train)
+    x_train_prediction = model.predict(X_train)
+    x_test_prediction = model.predict(X_test)
+    train_accuracy = accuracy_score(y_train, x_train_prediction)
+    test_accuracy = accuracy_score(y_test, x_test_prediction)
+    clf_report = classification_report(y_test, x_test_prediction)
+    print(f'Train set accuracy: {train_accuracy:.2f}')
+    print(f'Test set accuracy: {test_accuracy:.2f}' + '\n')
+    print(clf_report + '\n')
+
+encoder = LabelEncoder()
+
+encoder.fit(y_train)
+train_labels = encoder.transform(y_train)
+
+encoder.fit(y_test)
+test_labels = encoder.transform(y_test)
+
+model = Sequential()
+model.add(Dense(units=64, activation='relu', input_shape=(16,)))
+model.add(Dense(units=64, activation='relu'))
+model.add(Dense(units=26, activation='softmax'))
+
+model.compile(loss='sparse_categorical_crossentropy',
+              optimizer='adam',
+              metrics=['accuracy'])
+
+early_stopping = callbacks.EarlyStopping(
+    monitor='val_loss',
+    min_delta=0.001, 
+    patience=10, 
+    restore_best_weights=True)
+
+history = model.fit(X_train, train_labels, validation_data=(X_test, test_labels), epochs=200, batch_size=16, callbacks=[early_stopping])
+
+x_train_prediction = model.predict(X_train) 
+y_classes = x_train_prediction.argmax(axis=-1)
+train_accuracy = accuracy_score(train_labels, y_classes)
+print(f'Train set accuracy: {train_accuracy:.2f}')
+
+x_test_prediction = model.predict(X_test) 
+y_classes = x_test_prediction.argmax(axis=-1)
+test_accuracy = accuracy_score(test_labels, y_classes)
+print(f'Test set accuracy: {test_accuracy:.2f}')
+
+new_input = np.array([0.266667,0.733333,0.400000,0.533333,0.400000,0.666667,0.400000,0.133333,0.400000,0.666667,0.200000,0.466667,0.200000,0.466667,0.200000,0.600000])  # Your new input data
+new_input = np.reshape(new_input, (1, -1))  # Reshape to have 2 dimensions with a batch size of 1
+
+predictions = model.predict(new_input)
+predicted_labels = np.argmax(predictions, axis=1)
+print(predicted_labels)
